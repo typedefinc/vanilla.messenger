@@ -1,11 +1,20 @@
 import userService from '../../service/user/userService';
+import { validationResult } from 'express-validator';
+import ApiError from '../../exceptions/apiError';
+import { ResponseTokenType } from '../../interfaces/token';
 
 class UserController {
 
   async signup(req, res, next) {
     try {
-      const { login, password } = req.body;
-      const userData = await userService.signup(login, password);
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return next(ApiError.BadRequest('Error validation', errors.array()));
+      }
+
+      const { login, password, email } = req.body;
+      const userData: ResponseTokenType = await userService.signup(login, password, email);
 
       res.cookie('refreshToken', userData.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -14,39 +23,50 @@ class UserController {
 
       return res.json(userData);
     } catch (e) {
-      console.log(e);
+      next(e);
     }
   }
 
   async login(req, res, next) {
     try {
+      const { login, password } = req.body;
+      const userData: ResponseTokenType = await userService.login(login, password);
 
+      res.cookie('refreshToken', userData.refreshToken, {
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        httpOnly: true
+      });
+
+      return res.json(userData);
     } catch (e) {
-      console.log(e);
+      next(e);
     }
   }
 
   async logout(req, res, next) {
     try {
-
+      const { refreshToken } = req.cookies;
+      const token = await userService.logout(refreshToken);
+      res.clearCookie('refreshToken');
+      return res.json(token);
     } catch (e) {
-      console.log(e);
+      next(e);
     }
   }
 
   async refresh(req, res, next) {
     try {
+      const { refreshToken } = req.cookies;
+      const userData = await userService.refresh(refreshToken);
 
-    } catch (e) {
-      console.log(e);
-    }
-  }
+      res.cookie('refreshToken', userData.refreshToken, {
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        httpOnly: true
+      });
 
-  async users(req, res, next) {
-    try {
-      res.json(['123']);
+      return res.json(userData);
     } catch (e) {
-      console.log(e);
+      next(e);
     }
   }
 }

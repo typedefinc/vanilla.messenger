@@ -30,6 +30,38 @@ class TokenService {
       }
     });
   }
+
+  async removeToken(refreshToken: string) {
+    return await prisma.token.deleteMany({
+      where: {
+        refreshToken
+      }
+    });
+  }
+
+  async findToken(refreshToken: string) {
+    return await prisma.token.findFirst({
+      where: {
+        refreshToken
+      }
+    });
+  }
+
+  async validateAccessToken(token: string) {
+    try {
+      return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async validateRefreshToken(token: string) {
+    try {
+      return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 export default new TokenService();
